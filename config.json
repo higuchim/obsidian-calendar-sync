@@ -1,0 +1,10 @@
+{
+  "obsidian_daily_path": "/mnt/b/Dropbox/TaskChute2/higuchi/05_Daily",
+  "calendar_ids": [
+    "primary",
+    "i5p4vd8lg1vnoe530g8sgf4dlo@group.calendar.google.com"
+  ],
+  "target_header": "## 今日の予定",
+  "credentials_file": "credentials.json",
+  "token_file": "token.json"
+}
