@@ -16,12 +16,12 @@
 
 WSLのターミナルを開き、プロジェクトフォルダに移動して以下のコマンドを順に実行してください。
 ```
-python3 sync_calendar.py
+source ~/projects/obsidian-calendar-sync/venv/bin/activate && python3 sync_calendar.py
 ```
 
 特定の日付の予定を取得したい場合は、以下のコマンドを実行してください。
 ```
-python3 sync_calendar.py YYYY-MM-DD
+source ~/projects/obsidian-calendar-sync/venv/bin/activate && python3 sync_calendar.py YYYY-MM-DD
 ```
 
 ### 3. セットアップと設定
