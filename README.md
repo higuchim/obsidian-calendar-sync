@@ -12,8 +12,20 @@
 - Obsidian: インストール済みであること
 - Google アカウント: カレンダーにアクセスできる権限があること
 
-### 2. セットアップと設定
-#### 2.1 フォルダ構成の準備WSL上の任意の場所にプロジェクトフォルダを作成し、以下のファイルを配置してください。
+### 2. 使用方法
+
+WSLのターミナルを開き、プロジェクトフォルダに移動して以下のコマンドを順に実行してください。
+```
+python3 sync_calendar.py
+```
+
+特定の日付の予定を取得したい場合は、以下のコマンドを実行してください。
+```
+python3 sync_calendar.py YYYY-MM-DD
+```
+
+### 3. セットアップと設定
+#### 3.1 フォルダ構成の準備WSL上の任意の場所にプロジェクトフォルダを作成し、以下のファイルを配置してください。
 ```
 project_folder/
                ├── sync_calendar.py    # (配布されたスクリプト本体)
@@ -22,7 +34,7 @@ project_folder/
                └── venv/               # (Python仮想環境・自動生成されます)
 ```
 
-#### 2.2 Google認証情報の準備 (credentials.json)
+#### 3.2 Google認証情報の準備 (credentials.json)
 1. Google Cloud Console (https://console.cloud.google.com/) にアクセスし、新規プロジェクトを作成します。
 2. **APIとサービス > ライブラリ** から「**Google Calendar API**」を検索し、有効化します。
 3. **Google Auth Platform > ブランディング（Branding）** に進み、以下を設定します。
@@ -45,7 +57,7 @@ project_folder/
    - ポップアップ最下部の**JSONをダウンロード**をクリックし認証情報をダウンロードします。
    - ダウンロードしたファイルを**credentials.json**にリネームしてプロジェクトフォルダに配置します。
 
-#### 2.3 設定ファイルの編集 (config.json)
+#### 3.3 設定ファイルの編集 (config.json)
 config.json をテキストエディタで開き、環境に合わせて修正します。
 
 ```
@@ -64,7 +76,7 @@ config.json をテキストエディタで開き、環境に合わせて修正�
 重要: WSLからWindowsのフォルダを指定するため、C:\Users\... ではなく /mnt/c/Users/... の形式で記述してください。
 - calendar_ids: 取得したいカレンダーのIDリスト。個人のメインカレンダーは "primary" です。追加カレンダーは、Googleカレンダー設定画面の「カレンダーの統合」項目にあるIDを使用します。
   
-#### 2.4 Python環境の構築
+#### 3.4 Python環境の構築
 WSLのターミナルを開き、プロジェクトフォルダに移動して以下のコマンドを順に実行してください。
 ``` 
 # 1. 仮想環境の作成
@@ -76,7 +88,7 @@ source venv/bin/activate
 # 3. 必要なライブラリのインストール
 pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 ```
-### 3. 動作確認（初回実行）
+### 4. 動作確認（初回実行）
 初回の実行では、Googleアカウントへのアクセス許可（認証）が必要です。WSLターミナルで（仮想環境が有効な状態で）以下を実行します。
 ```
 python3 sync_calendar.py
@@ -93,7 +105,7 @@ Please visit this URL to authorize this application: https://accounts.google.com
 5. 成功すると プロジェクトフォルダにtoken.json が生成されます。
 6. Obsidianの「今日のデイリーノート」を確認し、予定が追記されているか確認してください。
 
-### 4. 自動化の指定方法（Windowsタスクスケジューラ）
+### 5. 自動化の指定方法（Windowsタスクスケジューラ）
 毎日決まった時刻に自動実行させるには、Windowsの「タスクスケジューラ」を使用します。このスクリプトは実行時点で当日のデイリーノートが存在することを前提にしているので、実行タイミングの設定はその点を考慮して行ってください。
 
 #### タスク登録手順
@@ -119,7 +131,7 @@ wsl.exe -u <WSLユーザー名> -e bash -c "source /home/<パス>/venv/bin/activ
 pause
 ```
 
-### 5. トラブルシューティング
+### 6. トラブルシューティング
 **Q1.** 1週間（7日）ごとに認証エラーが起きて動かなくなる
 
 **原因:** Google CloudのOAuth同意画面のステータスが「Testing（テスト中）」のままになっています。Testingステータスでは、リフレッシュトークンの有効期限が7日間に制限されます。

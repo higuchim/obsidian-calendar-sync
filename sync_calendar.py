@@ -2,6 +2,8 @@ import datetime
 import json
 import os.path
 import sys
+import argparse
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -93,11 +95,10 @@ def format_event(event):
     
     return f"- {summary}", 0
 
-def get_todays_events(service, config):
-    """全設定カレンダーから今日の予定を取得・マージ・ソート"""
-    now = datetime.datetime.now()
-    start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_dt = now.replace(hour=23, minute=59, second=59, microsecond=0)
+def get_events_for_date(service, config, target_date):
+    """指定された日付の予定を取得・マージ・ソート"""
+    start_dt = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_dt = target_date.replace(hour=23, minute=59, second=59, microsecond=0)
     
     time_min = start_dt.isoformat() + 'Z'
     time_max = end_dt.isoformat() + 'Z'
@@ -130,7 +131,7 @@ def get_todays_events(service, config):
     all_events.sort(key=lambda x: x['ts'])
     return [e['text'] for e in all_events]
 
-def update_obsidian_note(event_lines, config):
+def update_obsidian_note(event_lines, config, target_date):
     """Obsidianノートへの書き込み（冪等性あり）"""
     obsidian_path = config.get('obsidian_daily_path')
     target_header = config.get('target_header', '## 今日の予定')
@@ -139,7 +140,7 @@ def update_obsidian_note(event_lines, config):
         print("Error: config.json に 'obsidian_daily_path' が設定されていません。")
         return
 
-    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    today_str = target_date.strftime("%Y-%m-%d")
     file_path = os.path.join(obsidian_path, f"{today_str}.md")
 
     if not os.path.exists(obsidian_path):
@@ -180,6 +181,19 @@ def update_obsidian_note(event_lines, config):
         print("No new events to add.")
 
 def main():
+    # 引数解析
+    parser = argparse.ArgumentParser(description='Google Calendarの予定をObsidianに同期します。')
+    parser.add_argument('date', nargs='?', help='対象日付 (YYYY-MM-DD)。指定がない場合は今日。')
+    args = parser.parse_args()
+
+    target_date = datetime.datetime.now()
+    if args.date:
+        try:
+            target_date = datetime.datetime.strptime(args.date, '%Y-%m-%d')
+        except ValueError:
+            print("Error: 日付は YYYY-MM-DD の形式で指定してください。")
+            sys.exit(1)
+
     # 1. 設定読み込み
     config = load_config()
     
@@ -187,10 +201,10 @@ def main():
     service = authenticate_google_calendar(config)
     
     # 3. イベント取得
-    events = get_todays_events(service, config)
+    events = get_events_for_date(service, config, target_date)
     
     # 4. Obsidian更新
-    update_obsidian_note(events, config)
+    update_obsidian_note(events, config, target_date)
 
 if __name__ == '__main__':
     main()
