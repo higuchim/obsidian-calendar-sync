@@ -97,11 +97,11 @@ def format_event(event):
 
 def get_events_for_date(service, config, target_date):
     """指定された日付の予定を取得・マージ・ソート"""
-    start_dt = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_dt = target_date.replace(hour=23, minute=59, second=59, microsecond=0)
-    
-    time_min = start_dt.isoformat() + 'Z'
-    time_max = end_dt.isoformat() + 'Z'
+    start_dt = target_date.replace(hour=0, minute=0, second=0, microsecond=0).astimezone()
+    end_dt = target_date.replace(hour=23, minute=59, second=59, microsecond=0).astimezone()
+
+    time_min = start_dt.isoformat()
+    time_max = end_dt.isoformat()
     
     calendar_ids = config.get('calendar_ids', ['primary'])
     
