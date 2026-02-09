@@ -26,6 +26,11 @@ Google Calendar の予定を Obsidian のデイリーノートに同期する Py
 - **ファイル自動作成**: デイリーノートが無い場合は `# YYYY-MM-DD` ヘッダー付きで新規作成
 - **パス解決**: スクリプト配置ディレクトリ基準で設定ファイルを参照（`get_base_path()`）
 
+## 既知の注意点
+
+- **タイムゾーン**: Google Calendar API への時刻送信時、ローカルタイムゾーン（JST）を正しく付与する必要がある。`isoformat() + 'Z'` でUTC扱いにするとクエリ範囲がずれ、翌日の終日イベント（祝日等）が混入するバグが発生した（修正済み: `.astimezone()` を使用）
+- **git管理外ファイル**: `credentials.json`、`token.json`、`venv/`、`.claude/` は `.gitignore` で除外。`config.json` はgit管理対象だが、カレンダーIDなど個人情報を含む点に注意
+
 ## 実行方法
 
 ```bash
