@@ -3,7 +3,8 @@
   "calendar_ids": [
     "primary",
     "i5p4vd8lg1vnoe530g8sgf4dlo@group.calendar.google.com",
-    "n96d2tdgm65o4d49sjmatpnqfjnnghk9@import.calendar.google.com"
+    "n96d2tdgm65o4d49sjmatpnqfjnnghk9@import.calendar.google.com",
+    "ja.japanese#holiday@group.v.calendar.google.com"
   ],
   "target_header": "\n## 今日の予定",
   "credentials_file": "credentials.json",
