@@ -69,6 +69,9 @@ config.json をテキストエディタで開き、環境に合わせて修正�
     "primary",
     "xxxxxxxx@group.calendar.google.com"
   ],
+  "weather_calendar_ids": [
+    "yyyyyyyy@import.calendar.google.com"
+  ],
   "target_header": "## 今日の予定",
   "credentials_file": "credentials.json",
   "token_file": "token.json"
@@ -77,6 +80,11 @@ config.json をテキストエディタで開き、環境に合わせて修正�
 - obsidian_daily_path: Obsidianのデイリーノートが保存されているフォルダのパス。
 重要: WSLからWindowsのフォルダを指定するため、C:\Users\... ではなく /mnt/c/Users/... の形式で記述してください。
 - calendar_ids: 取得したいカレンダーのIDリスト。個人のメインカレンダーは "primary" です。追加カレンダーは、Googleカレンダー設定画面の「カレンダーの統合」項目にあるIDを使用します。
+- weather_calendar_ids: 天気予報として扱うカレンダーIDのリストです。ここに設定したカレンダーのイベントは「天気予報」として分類され、予定セクションの先頭側に並びます。
+- target_header: 予定を書き込むMarkdownヘッダー名です。対象ノート内に同名ヘッダーがある場合はそのセクション直下に追記し、存在しない場合はノート末尾にヘッダーを作成して追記します。
+  注記: 先頭/末尾の空白や改行は自動的に除去されます。通常は `"## 今日の予定"` の形式で設定してください。
+  同期データは `<!-- calendar-sync:start -->` 〜 `<!-- calendar-sync:end -->` の管理ブロックに保存され、同期時に毎回このブロックが全置換されます（Google Calendar側で削除したイベントはノート側からも削除されます）。
+  予定の並び順は「終日イベント」→「天気予報 (`weather_calendar_ids`)」→「時刻指定イベント（開始時刻昇順）」です。
   
 #### 3.4 Python環境の構築
 WSLのターミナルを開き、プロジェクトフォルダに移動して以下のコマンドを順に実行してください。
@@ -154,7 +162,7 @@ pause
 
 **原因:** パスの記述ミス、またはWSLからWindows側ファイルシステムへの書き込み権限の問題。
 
-**対処:** config.py の OBSIDIAN_VAULT_PATH が正しいか確認してください。WSLからは /mnt/c/Users/... のようにマウントポイント経由でアクセスする必要があります。
+**対処:** config.json の `obsidian_daily_path` が正しいか確認してください。WSLからは /mnt/c/Users/... のようにマウントポイント経由でアクセスする必要があります。
 
 ---
 

@@ -6,6 +6,9 @@
     "n96d2tdgm65o4d49sjmatpnqfjnnghk9@import.calendar.google.com",
     "ja.japanese#holiday@group.v.calendar.google.com"
   ],
+  "weather_calendar_ids": [
+    "n96d2tdgm65o4d49sjmatpnqfjnnghk9@import.calendar.google.com"
+  ],
   "target_header": "\n## 今日の予定",
   "credentials_file": "credentials.json",
   "token_file": "token.json"

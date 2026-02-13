@@ -3,6 +3,7 @@ import json
 import os.path
 import sys
 import argparse
+import re
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -15,6 +16,8 @@ CONFIG_FILENAME = 'config.json'
 
 # Google Calendar APIのスコープ
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+SYNC_BLOCK_START = '<!-- calendar-sync:start -->'
+SYNC_BLOCK_END = '<!-- calendar-sync:end -->'
 
 def get_base_path():
     """スクリプトのあるディレクトリの絶対パスを取得"""
@@ -68,32 +71,65 @@ def authenticate_google_calendar(config):
 
     return build('calendar', 'v3', credentials=creds)
 
-def format_event(event):
+def parse_iso_datetime(value):
+    """ISO日時文字列をdatetimeに変換"""
+    if value.endswith('Z'):
+        value = value[:-1] + '+00:00'
+    return datetime.datetime.fromisoformat(value)
+
+def format_event(event, calendar_id, weather_calendar_ids):
     """イベント情報を整形して返す"""
     start = event['start']
     summary = event.get('summary', '(No Title)')
+    is_weather = calendar_id in weather_calendar_ids
     
     # 時刻情報の取得
     if 'dateTime' in start:
         # 時間指定イベント
-        # 【修正】辞書からキーを指定して文字列を取り出す
-        dt_obj = datetime.datetime.fromisoformat(start['dateTime'])
+        dt_obj = parse_iso_datetime(start['dateTime'])
         time_str = dt_obj.strftime('%H:%M')
         
         end = event['end']
         if 'dateTime' in end:
-            # 【修正】辞書からキーを指定して文字列を取り出す
-            end_obj = datetime.datetime.fromisoformat(end['dateTime'])
+            end_obj = parse_iso_datetime(end['dateTime'])
             time_str += f"-{end_obj.strftime('%H:%M')}"
-            
-        return f"- {time_str} {summary}", dt_obj.timestamp()
+
+        return {
+            'text': f"- {time_str} {summary}",
+            'start_ts': dt_obj.timestamp(),
+            'is_all_day': False,
+            'is_weather': is_weather,
+        }
     
     elif 'date' in start:
         # 終日イベント
         date_obj = datetime.datetime.strptime(start['date'], '%Y-%m-%d')
-        return f"- [終日] {summary}", date_obj.timestamp()
+        return {
+            'text': f"- [終日] {summary}",
+            'start_ts': date_obj.timestamp(),
+            'is_all_day': True,
+            'is_weather': is_weather,
+        }
     
-    return f"- {summary}", 0
+    return {
+        'text': f"- {summary}",
+        'start_ts': 0,
+        'is_all_day': False,
+        'is_weather': is_weather,
+    }
+
+def sort_events(events):
+    """終日イベント、天気予報、時刻指定イベントの順でソート"""
+    def sort_key(event):
+        if event['is_all_day'] and not event['is_weather']:
+            rank = 0
+        elif event['is_weather']:
+            rank = 1
+        else:
+            rank = 2
+        return (rank, event['start_ts'], event['text'])
+
+    return sorted(events, key=sort_key)
 
 def get_events_for_date(service, config, target_date):
     """指定された日付の予定を取得・マージ・ソート"""
@@ -104,6 +140,7 @@ def get_events_for_date(service, config, target_date):
     time_max = end_dt.isoformat()
     
     calendar_ids = config.get('calendar_ids', ['primary'])
+    weather_calendar_ids = set(config.get('weather_calendar_ids', []))
     
     # 【修正】空リストで初期化
     all_events = []
@@ -118,23 +155,23 @@ def get_events_for_date(service, config, target_date):
                 orderBy='startTime'
             ).execute()
             
-            # 【修正】getの第二引数を空リストに
             items = events_result.get('items', [])
             
             for item in items:
-                formatted_text, timestamp = format_event(item)
-                all_events.append({'text': formatted_text, 'ts': timestamp})
+                all_events.append(format_event(item, cal_id, weather_calendar_ids))
                 
         except HttpError as error:
             print(f"Calendar ID '{cal_id}' error: {error}")
 
-    all_events.sort(key=lambda x: x['ts'])
-    return [e['text'] for e in all_events]
+    sorted_events = sort_events(all_events)
+    return [e['text'] for e in sorted_events]
 
 def update_obsidian_note(event_lines, config, target_date):
-    """Obsidianノートへの書き込み（冪等性あり）"""
+    """Obsidianノートへの書き込み（管理ブロックを全置換）"""
     obsidian_path = config.get('obsidian_daily_path')
-    target_header = config.get('target_header', '## 今日の予定')
+    target_header = config.get('target_header', '## 今日の予定').strip()
+    if not target_header:
+        target_header = '## 今日の予定'
 
     if not obsidian_path:
         print("Error: config.json に 'obsidian_daily_path' が設定されていません。")
@@ -155,30 +192,75 @@ def update_obsidian_note(event_lines, config, target_date):
     # ファイル読み込み
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-        content = "".join(lines)
 
-    # 【修正】空リストで初期化
-    new_lines = []
-    
-    header_exists = target_header in content
-    
-    for event_line in event_lines:
-        if event_line not in content:
-            new_lines.append(event_line)
+    def header_level(header_text):
+        match = re.match(r'^#{1,6}(?=\s)', header_text)
+        if match:
+            return len(match.group(0))
+        return None
 
-    if new_lines:
-        with open(file_path, 'a', encoding='utf-8') as f:
-            if content and not content.endswith('\n'):
-                f.write('\n')
-            
-            if not header_exists:
-                f.write(f"\n{target_header}\n")
-            
-            for line in new_lines:
-                f.write(f"{line}\n")
-        print(f"Added {len(new_lines)} events to {today_str}.md")
+    # ターゲットヘッダーの位置を探す（前後空白は無視）
+    header_idx = None
+    for i, line in enumerate(lines):
+        if line.strip() == target_header:
+            header_idx = i
+            break
+
+    if header_idx is None:
+        if lines and not lines[-1].endswith('\n'):
+            lines[-1] = lines[-1] + '\n'
+        if lines and lines[-1].strip():
+            lines.append('\n')
+        lines.append(f"{target_header}\n")
+        header_idx = len(lines) - 1
+
+    section_start = header_idx + 1
+    section_end = len(lines)
+    target_level = header_level(target_header)
+
+    # 次の同レベル以上のヘッダーまでを対象セクションとする
+    if target_level is not None:
+        for i in range(section_start, len(lines)):
+            match = re.match(r'^\s{0,3}(#{1,6})\s+', lines[i])
+            if match and len(match.group(1)) <= target_level:
+                section_end = i
+                break
+
+    # セクション内の管理ブロック範囲を探す
+    block_start_idx = None
+    block_end_idx = None
+    for i in range(section_start, section_end):
+        if lines[i].strip() == SYNC_BLOCK_START:
+            block_start_idx = i
+            break
+    if block_start_idx is not None:
+        for i in range(block_start_idx + 1, section_end):
+            if lines[i].strip() == SYNC_BLOCK_END:
+                block_end_idx = i
+                break
+        if block_end_idx is None:
+            # 壊れたブロックはセクション末尾までを管理対象として復旧
+            block_end_idx = section_end - 1
+
+    managed_block_lines = [f"{SYNC_BLOCK_START}\n"]
+    managed_block_lines.extend(f"{line}\n" for line in event_lines)
+    managed_block_lines.append(f"{SYNC_BLOCK_END}\n")
+
+    if block_start_idx is None:
+        insert_at = section_start
+        while insert_at < section_end and lines[insert_at].strip() == '':
+            insert_at += 1
+        new_file_lines = lines[:insert_at] + managed_block_lines + lines[insert_at:]
     else:
-        print("No new events to add.")
+        new_file_lines = lines[:block_start_idx] + managed_block_lines + lines[block_end_idx + 1:]
+
+    if new_file_lines == lines:
+        print("No changes to sync block.")
+        return
+
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.writelines(new_file_lines)
+    print(f"Synced {len(event_lines)} events to {today_str}.md")
 
 def main():
     # 引数解析
