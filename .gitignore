@@ -1,4 +1,9 @@
 credentials.json
 token.json
-venv/*
+venv/
 .claude/
+__pycache__/
+*.pyc
+config.json
+.vscode/
+.DS_Store

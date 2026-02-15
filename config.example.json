@@ -1,0 +1,10 @@
+{
+    "obsidian_daily_path": "/path/to/your/obsidian/daily_notes",
+    "calendar_ids": [
+        "primary"
+    ],
+    "weather_calendar_ids": [],
+    "target_header": "\n## 今日の予定",
+    "credentials_file": "credentials.json",
+    "token_file": "token.json"
+}
