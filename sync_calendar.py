@@ -57,8 +57,13 @@ def authenticate_google_calendar(config):
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except Exception:
+                # Refresh failed (e.g. revoked), try new auth flow
+                creds = None
+        
+        if not creds or not creds.valid:
             if not os.path.exists(creds_path):
                 print(f"Error: 認証情報ファイルが見つかりません: {creds_path}")
                 sys.exit(1)
